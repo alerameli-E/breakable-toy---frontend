@@ -1,0 +1,93 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    /* fondo oscuro semitransparente */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 1001;
+}
+
+.modal-row {
+    display: flex;
+    width: 100%;
+    margin: 3% 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-row label {
+    flex: 1;
+    font-weight: bold;
+    text-align: right;
+}
+
+.modal-row input,
+select {
+    flex: 2;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.modal-buttons-row{
+    display: flex;
+    width: 100%;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-button {
+    padding: 8px 20px;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.modal-button:hover {
+    transform: scale(1.05);
+}
+
+.modal-close-button {
+    background-color: rgb(238, 75, 75);
+}
+
+.modal-close-button:hover {
+    background-color: rgb(200, 50, 50);
+}
+
+.modal-save-button {
+    background-color: #007bff;
+}
+
+.modal-save-button:hover {
+    background-color: #0056b3;
+}
+
+.modal-error{
+    border: solid 1px rgb(220, 46, 46);
+    background-color: rgb(234, 178, 178);
+    padding: 2%;
+    margin-top: 2%;
+    text-align: center;
+    color: rgb(220, 46, 46);
+    border-radius: 2px;
+}
+
