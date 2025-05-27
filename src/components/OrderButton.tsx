@@ -6,10 +6,9 @@ interface PropsOrderButton{
     criteria:string
 }
 
-
 const OrderButtton:React.FC<PropsOrderButton> = ({handleSorting,criteria})=> {
     return (
-        <button className="order-button" onClick={() => handleSorting("id")}>
+        <button className="order-button" onClick={() => handleSorting(criteria)}>
             <ArrowDownUp size={16} color="#7d807e" />
         </button>
     )

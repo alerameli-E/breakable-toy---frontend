@@ -1,60 +1,62 @@
-import React from "react";
-import App from "./App";
-import axios from "axios";
-import { render, waitFor, screen } from "@testing-library/react";
+import { render, screen, waitFor } from '@testing-library/react';
+import App from './App';
+import axios from 'axios';
+import { Producto } from './types';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+window.alert = jest.fn();
 
 
-// Simulamos axios para evitar hacer una llamada real al backend
-jest.mock("axios");
+describe('App - getProducts only', () => {
+  test('calls getProducts and renders products', async () => {
+    const mockProducts: Producto[] = [
+      {
+        id: 1,
+        name: "Producto A",
+        category: "AC",
+        unitPrice: "15.50",
+        expirationDate: "2025-12-31",
+        quantityInStock: "100",
+        creationDate: "2024-01-01",
+        updateDate: "2024-06-01"
+      }
+    ];
 
-test("llama al endpoint getProducts y muestra los productos en la tabla", async () => {
-  // Simulamos la respuesta del endpoint getProducts
-  (axios.get as jest.Mock).mockImplementation((url) => {
-    if (url === "http://localhost:8080/getProducts") {
-      return Promise.resolve({
-        data: [
-          {
-            id: 1,
-            name: "Producto A",
-            category: "AC",
-            unitPrice: "15.50",
-            expirationDate: "2025-12-31",
-            quantityInStock: "100",
-            creationDate: "2024-01-01",
-            updateDate: "2024-06-01",
-          },
-          {
-            id: 2,
-            name: "Producto B",
-            category: "DC",
-            unitPrice: "8.99",
-            expirationDate: "2026-01-15",
-            quantityInStock: "50",
-            creationDate: "2024-02-15",
-            updateDate: "2024-05-01",
-          },
-        ],
-      });
-    }
-  
-    if (url === "http://localhost:8080/getCategories") {
-      return Promise.resolve({
-        data: ["AC", "DC"],
-      });
-    }
-  
-    return Promise.reject(new Error("URL no reconocida"));
-  });
-  
+    // Solo simulamos getProducts. getCategories da una lista vacía.
+    mockedAxios.get.mockImplementation((url: string) => {
+      if (url.includes("getProducts")) {
+        return Promise.resolve({ data: mockProducts });
+      } else if (url.includes("getCategories")) {
+        return Promise.resolve({ data: [] }); // simulamos vacío
+      }
+      return Promise.reject(new Error("URL no manejada"));
+    });
 
-  // Renderizamos la app
-  render(<App />);
+    render(<App />);
 
-  // Esperamos a que los productos aparezcan en pantalla
-  await waitFor(() => {
-    // Aquí debes ajustar los textos según lo que renders tu TableSection
+    await waitFor(() => {
+      expect(screen.queryByText("Cargando...")).not.toBeInTheDocument();
+    });
+
+    // Asegúrate de que el producto se renderiza por su nombre
     expect(screen.getByText("Producto A")).toBeInTheDocument();
-    expect(screen.getByText("Producto B")).toBeInTheDocument();
+  });
+
+  test('shows error screen if getProducts fails', async () => {
+    mockedAxios.get.mockImplementation((url: string) => {
+      if (url.includes("getProducts")) {
+        return Promise.reject(new Error("fallo en productos"));
+      } else if (url.includes("getCategories")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.reject(new Error("URL no manejada"));
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/error/i)).toBeInTheDocument();
+    });
   });
 });
-

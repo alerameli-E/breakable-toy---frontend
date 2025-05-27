@@ -1,74 +1,81 @@
-import React, { Dispatch, SetStateAction, useState } from "react";
+import React, { Dispatch, SetStateAction, useState, useEffect } from "react";
 import "../Styles/TableSection.css"
 import Pagination from "./Pagination";
 import { Producto } from "../types";
 import axios from "axios";
 import "../Styles/Buttons.css"
 import OrderButtton from "./OrderButton";
+import URLS, { handleAxiosError } from "../utils";
 
 interface TableSectionProps {
-    listaProductos: Producto[];
+    productsList: Producto[];
     setIsModalOpen: Dispatch<SetStateAction<boolean>>;
-    setListaProductos: Dispatch<SetStateAction<Producto[]>>;
-    setProductoSeleccionado: Dispatch<SetStateAction<Producto | null>>;
-    setProductoEliminar: Dispatch<SetStateAction<Producto | null>>;
-    getProducts: () => void
-    handleOpenModal: () => void
+    setProductsList: Dispatch<SetStateAction<Producto[]>>;
+    setSelectedProduct: Dispatch<SetStateAction<Producto | null>>;
+    setDeleteProduct: Dispatch<SetStateAction<Producto | null>>;
+    handleOpenModal: () => void;
 }
 
-const TableSection: React.FC<TableSectionProps> = ({ listaProductos, setIsModalOpen, setListaProductos, setProductoSeleccionado, setProductoEliminar, getProducts, handleOpenModal }) => {
-
+const TableSection: React.FC<TableSectionProps> = ({
+    productsList,
+    setIsModalOpen,
+    setProductsList,
+    setSelectedProduct,
+    setDeleteProduct,
+    handleOpenModal
+}) => {
+    
     const [sortedInformation, setSortedInformation] = useState({
         column: "",
         order: ""
     });
 
+    
+    //Variables por pagination
+    const itemPerPage = 10;
+    const totalPages = Math.ceil(productsList.length / itemPerPage);
+
     const [currentPage, setCurrentPage] = useState(1);
-    const itemPerPage = 10
 
-    const lastItemPage = currentPage * itemPerPage
-    const firstItemPage = lastItemPage - itemPerPage
+    const lastItemPage = currentPage * itemPerPage;
+    const firstItemPage = lastItemPage - itemPerPage;
+    const currentItems = productsList.slice(firstItemPage, lastItemPage);
 
-    const currentItems = listaProductos.slice(firstItemPage, lastItemPage)
+    //Listens if a value has changed to set the currenPage in case of over flow
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages === 0 ? 1 : totalPages);
+        }
+    }, [productsList, currentPage, totalPages]);
 
+    
+    //Sorts the products depending on the column given as parameter. Uses sortedInformation to store column and order
     const handleSorting = (orderCriteria: string) => {
         let newOrder: string = "";
 
         if (sortedInformation.column === orderCriteria) {
-            if (sortedInformation.order === "asc") {
-                newOrder = "desc";
-            } else {
-                newOrder = "asc";
-            }
+            newOrder = sortedInformation.order === "asc" ? "desc" : "asc";
         } else {
             newOrder = "asc";
         }
-        const copiaLista = listaProductos;
+
+        //Create a copy which can be edited
+        const copiaLista = [...productsList];
 
         const listaOrdenada = copiaLista.sort((a, b) => {
             const aVal = a[orderCriteria as keyof Producto];
             const bVal = b[orderCriteria as keyof Producto];
 
             if (typeof aVal === "number" && typeof bVal === "number") {
-                if (newOrder === "asc") {
-                    return aVal - bVal;
-                } else {
-                    return bVal - aVal;
-                }
+                return newOrder === "asc" ? aVal - bVal : bVal - aVal;
             } else {
                 const aStr = String(aVal);
                 const bStr = String(bVal);
-
-                if (newOrder === "asc") {
-                    return aStr.localeCompare(bStr);
-                } else {
-                    return bStr.localeCompare(aStr);
-                }
+                return newOrder === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
             }
-
         });
 
-        setListaProductos(listaOrdenada);
+        setProductsList(listaOrdenada);
         setSortedInformation({
             column: orderCriteria,
             order: newOrder
@@ -76,15 +83,17 @@ const TableSection: React.FC<TableSectionProps> = ({ listaProductos, setIsModalO
     };
 
     const handleEditButton = (item: Producto) => {
-        setIsModalOpen(true)
-        setProductoSeleccionado(item)
-    }
+        setIsModalOpen(true);
+        setSelectedProduct(item);
+    };
 
+    //Sets the color of the stock cell depending on the quantity
     const setStockColor = (item: Producto) => {
-        if (Number(item.quantityInStock) >= 5 && Number(item.quantityInStock) <= 10) return "orange-cell"
-        if (Number(item.quantityInStock) < 5) return "red-cell"
-    }
+        if (Number(item.quantityInStock) >= 5 && Number(item.quantityInStock) <= 10) return "orange-cell";
+        if (Number(item.quantityInStock) < 5) return "red-cell";
+    };
 
+    //Sets the color line of the product depending on expirationDate
     const setLineColor = (item: Producto) => {
         if (!item.expirationDate) return "";
 
@@ -99,17 +108,19 @@ const TableSection: React.FC<TableSectionProps> = ({ listaProductos, setIsModalO
         return "green-cell";
     };
 
+
+    //Handles to set the stock of a given product depending on the stock it has
     const setStockValue = (item: Producto) => {
         const url = Number(item.quantityInStock) > 0
-            ? `http://localhost:8080/products/${item.id}/outofstock`
-            : `http://localhost:8080/products/${item.id}/instock`;
+            ? URLS.outStock + item.id + "/outofstock"
+            : URLS.inStock + item.id + "/instock";
 
         const method = Number(item.quantityInStock) > 0 ? 'post' : 'put';
 
         axios({ method, url })
             .then(response => {
                 if (response.status === 200) {
-                    setListaProductos(prev => prev.map(producto => {
+                    setProductsList(prev => prev.map(producto => {
                         if (producto.id === item.id) {
                             return {
                                 ...producto,
@@ -121,40 +132,40 @@ const TableSection: React.FC<TableSectionProps> = ({ listaProductos, setIsModalO
                 }
             })
             .catch(error => {
-                console.error("Error actualizando stock:", error);
+                handleAxiosError(error);
             });
     };
-
 
     return (
         <div className="tablesection-container">
             <h2>Products</h2>
 
-            <button className="button add-button"
-                onClick={handleOpenModal}>
-                Add product</button>
+            <button className="button add-button" onClick={handleOpenModal}>
+                Add product
+            </button>
+
             <table className="products-table">
                 <thead>
                     <tr>
-                        <th>#
+                        <th className="col-id">#
                             <OrderButtton criteria="id" handleSorting={handleSorting} />
                         </th>
-                        <th >Name
+                        <th className="col-name">Name
                             <OrderButtton criteria="name" handleSorting={handleSorting} />
                         </th>
-                        <th className="centered-cell">Category
+                        <th className="col-category centered-cell">Category
                             <OrderButtton criteria="category" handleSorting={handleSorting} />
                         </th>
-                        <th className="centered-cell">Price
+                        <th className="col-price centered-cell">Price
                             <OrderButtton criteria="unitPrice" handleSorting={handleSorting} />
                         </th>
-                        <th className="centered-cell">Expiration date
+                        <th className="col-expiration centered-cell">Expiration date
                             <OrderButtton criteria="expirationDate" handleSorting={handleSorting} />
                         </th>
-                        <th className="centered-cell">Stock
+                        <th className="col-stock centered-cell">Stock
                             <OrderButtton criteria="quantityInStock" handleSorting={handleSorting} />
                         </th>
-                        <th className="centered-cell">Actions</th>
+                        <th className="col-actions centered-cell">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -167,20 +178,28 @@ const TableSection: React.FC<TableSectionProps> = ({ listaProductos, setIsModalO
                             <td className="centered-cell">{item.expirationDate}</td>
                             <td className={`${setStockColor(item)} centered-cell`}>{item.quantityInStock}</td>
                             <td className="centered-cell">
-                                <button className="button  edit-button" onClick={() => handleEditButton(item)}>Edit</button>
-                                <button className="button delete-button" onClick={() => setProductoEliminar(item)}>Delete</button>
+                                <button className="button edit-button" onClick={() => handleEditButton(item)}>Edit</button>
+                                <button className="button delete-button" onClick={() => setDeleteProduct(item)}>Delete</button>
                                 <button
                                     onClick={() => setStockValue(item)}
                                     className="button stock-button"
-                                >{Number(item.quantityInStock) === 0 ? "Restock" : "Set Out of Stock"} </button>
+                                >
+                                    {Number(item.quantityInStock) === 0 ? "Restock" : "Set Out of Stock"}
+                                </button>
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
-            <Pagination totalItems={listaProductos.length} itemsPerPage={itemPerPage} setCurrentPage={setCurrentPage} currentPage={currentPage} />
+
+            <Pagination
+                totalItems={productsList.length}
+                itemsPerPage={itemPerPage}
+                setCurrentPage={setCurrentPage}
+                currentPage={currentPage}
+            />
         </div>
-    )
-}
+    );
+};
 
 export default TableSection;

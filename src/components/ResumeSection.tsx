@@ -3,41 +3,53 @@ import "../Styles/ResumeSection.css"
 import { Producto } from "../types";
 
 interface ModalsResumen {
-    listaProductos: Producto[]
+    productsList: Producto[]
 }
 
-const ResumeSection: React.FC<ModalsResumen> = ({ listaProductos }) => {
+const ResumeSection: React.FC<ModalsResumen> = ({ productsList }) => {
 
-    const resumenPorCategoria = listaProductos.reduce((acc, producto) => {
+    //This const creates an object that has the resume of the procucts by the function reduce
+    const resumeByCategory = productsList.reduce((acc, producto) => {
         const { category, quantityInStock, unitPrice } = producto;
-        const cantidad = Number(quantityInStock);
-        const costoTotal = cantidad * Number(unitPrice);
+        const quantity = Number(quantityInStock);
+        const totalCost = quantity * Number(unitPrice);
 
-        const existente = acc.find(item => item.categoria === category);
+        const existingProduct = acc.find(item => item.category === category);
 
-        if (existente) {
-            existente.cantidadTotal += cantidad;
-            existente.valorTotal += costoTotal;
+        if (existingProduct) {
+            existingProduct.totalQuantity += quantity;
+            existingProduct.totalValue += totalCost;
         } else {
             acc.push({
-                categoria: category,
-                cantidadTotal: cantidad,
-                valorTotal: costoTotal,
+                category: category,
+                totalQuantity: quantity,
+                totalValue: totalCost,
             });
         }
 
         return acc;
-    }, [] as { categoria: string; cantidadTotal: number; valorTotal: number }[]);
+    }, [] as { category: string; totalQuantity: number; totalValue: number }[]);
 
+    const generalResume = productsList.reduce(
+        (acc, producto) => {
+            const quantity = Number(producto.quantityInStock);
+            const precio = Number(producto.unitPrice);
+            const totalCost = quantity * precio;
 
+            acc.quantityInStock += quantity;
+            acc.totalValue += totalCost;
+            return acc;
+        },
+        { quantityInStock: 0, totalValue: 0 }
+    );
 
-    const formateoMoneda = (number: Number) =>{
-        if(isNaN(Number(number))){
+    const formatCurrency = (number: Number) => {
+        if (isNaN(Number(number))) {
             number = 0;
         }
 
-        return number.toLocaleString("es-MX",{
-            style:"currency",
+        return number.toLocaleString("es-MX", {
+            style: "currency",
             currency: "MXN"
         })
     }
@@ -56,14 +68,24 @@ const ResumeSection: React.FC<ModalsResumen> = ({ listaProductos }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {resumenPorCategoria.map((item, index) => (
+                    {resumeByCategory.map((item, index) => (
                         <tr key={index}>
-                            <td>{item.categoria}</td>
-                            <td className="centered-cell">{item.cantidadTotal}</td>
-                            <td className="centered-cell">{formateoMoneda(item.valorTotal)}</td>
-                            <td className="centered-cell">{formateoMoneda(item.valorTotal / item.cantidadTotal)}</td>
+                            <td>{item.category}</td>
+                            <td className="centered-cell">{item.totalQuantity}</td>
+                            <td className="centered-cell">{formatCurrency(item.totalValue)}</td>
+                            <td className="centered-cell">{formatCurrency(item.totalValue / item.totalQuantity)}</td>
                         </tr>
+
                     ))}
+                    <tr>
+                        <td>General info</td>
+                        <td className="centered-cell">{generalResume.quantityInStock}</td>
+                        <td className="centered-cell">{formatCurrency(generalResume.totalValue)}</td>
+                        <td className="centered-cell">
+                            {formatCurrency(generalResume.totalValue / generalResume.quantityInStock || 0)}
+                        </td>
+                    </tr>
+
                 </tbody>
             </table>
         </div>

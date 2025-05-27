@@ -4,31 +4,51 @@ import { Producto } from "../types";
 import { SearchValues } from "../types";
 import axios from "axios";
 import "../Styles/Buttons.css"
+import URLS, { handleAxiosError } from "../utils";
 
 
 interface FilterSectionProps {
-    listaCategorias: string[];
-    setListaProductos: Dispatch<SetStateAction<Producto[]>>
+    categoriesList: string[];
+    setProductsList: Dispatch<SetStateAction<Producto[]>>
     searchValues: SearchValues,
-    setSearchValues: Dispatch<SetStateAction<SearchValues>>
+    setSearchValues: Dispatch<SetStateAction<SearchValues>>,
+    getProducts: () => void
 }
 
 const FilterSection: React.FC<FilterSectionProps> = ({
-    listaCategorias,
-    setListaProductos,
+    categoriesList,
+    setProductsList,
     searchValues,
     setSearchValues,
+    getProducts
 }) => {
 
     const handleSearch = () => {
-        axios.post("http://localhost:8080/getProductsFiltered", searchValues)
-            .then(response => {
-                console.log(response.data)
-                setListaProductos(response.data)
+        const trimmedValues = {
+            ...searchValues,
+            name: searchValues.name.trim()
+        };
+
+        axios.post(URLS.getProductsFiltered, trimmedValues)
+            .then((response) => {
+                const answer = (response.data)
+                setProductsList(answer)
             })
             .catch(error => {
-                console.log("Error al buscar los datos: ", error)
+                handleAxiosError(error)
             })
+    }
+
+
+    const handleClear = () => {
+        getProducts()
+        setSearchValues(
+            {
+                name: "",
+                category: "AC",
+                availability: "All"
+            }
+        )
     }
 
     return (
@@ -43,7 +63,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 <label htmlFor="category">Category</label>
                 <select value={searchValues.category} onChange={(event) => setSearchValues(prev => ({ ...prev, category: event.target.value }))} >
                     <option value="AC">Any category</option>
-                    {listaCategorias.map((categoria, index) => (
+                    {categoriesList.map((categoria, index) => (
                         <option key={index} value={categoria}>{categoria}</option>
                     ))}
                 </select>
@@ -66,8 +86,15 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 </select>
             </div>
 
-            <button className="button filter-button" onClick={() => handleSearch()}>
-                Search</button>
+            <div className="filter-buttons">
+                <button className="button filter-button" onClick={handleSearch}>
+                    Search
+                </button>
+                <button className="button clear-button" onClick={handleClear}>
+                    Clear filters
+                </button>
+            </div>
+
         </div>
 
     )

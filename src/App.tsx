@@ -8,14 +8,20 @@ import ResumeSection from './components/ResumeSection';
 import { Producto } from './types';
 import { SearchValues } from './types';
 import ModalDelete from './components/ModalDelete';
+import ErrorPage from './components/ErrorPage';
+import  URLS  from './utils';
 
 function App() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [listaProductos, setListaProductos] = useState<Producto[]>([])
-  const [listaCategorias, setListaCategorias] = useState([])
-  const [productoSeleccionado, setProductoSeleccionado] = useState<Producto | null>(null);
-  const [productoEliminar, setProductoEliminar] = useState<Producto | null>(null);
+  const [productsList, setProductsList] = useState<Producto[]>([])
+  const [categoriesList, setCategoriesList] = useState([])
+  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+  const [deleteProduct, setDeleteProduct] = useState<Producto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorLoading, setErrorLoading] = useState(false)
+  const [notification, setNotification] = useState<string | null>(null);
+
 
 
   const [searchValues, setSearchValues] = useState<SearchValues>({
@@ -24,29 +30,46 @@ function App() {
     availability: "All"
   })
 
-  const getProducts = () => {
-    axios.get("http://localhost:8080/getProducts")
+  const getProducts = async (): Promise<void> => {
+    return axios.get(URLS.getProducts)
       .then(response => {
-        setListaProductos(response.data);
+        setProductsList(response.data);
       })
-      .catch(error => {
-        console.error("Error al obtener productos:", error);
+      .catch(() => {
+        setErrorLoading(true);
       });
-  }
+  };
 
-  const getCategories = () => {
-    axios.get("http://localhost:8080/getCategories")
+  const getCategories = async(): Promise<void> => {
+    return axios.get(URLS.getCategories)
       .then(response => {
-        setListaCategorias(response.data);
-      }).catch(error => {
-        console.log("Error al cargar las categorias: ", error)
+        setCategoriesList(response.data);
       })
-  }
+      .catch(() => {
+        setErrorLoading(true);
+      });
+  };
 
   useEffect(() => {
-    getProducts()
-    getCategories()
+    setIsLoading(true);
+    Promise.all([getProducts(), getCategories()])
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
+
+
+  //useEffect to clean notification
+  useEffect(() => {
+    const visibleTime: number = 3000;
+    if (notification) {
+      const timeout = setTimeout(() => {
+        setNotification(null);
+      }, visibleTime);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [notification]);
 
 
   const handleOpenModal = () => {
@@ -55,44 +78,61 @@ function App() {
 
   return (
     <div className='main-container'>
-      {listaCategorias.length > 0 &&
-        <FilterSection
-          listaCategorias={listaCategorias}
-          setListaProductos={setListaProductos}
-          setSearchValues={setSearchValues}
-          searchValues={searchValues}
-        />}
-      {isModalOpen &&
-        <Modal
-          getProducts={getProducts}
-          getCategories={getCategories}
-          setIsModalOpen={setIsModalOpen}
-          listaCategorias={listaCategorias}
-          productoSeleccionado={productoSeleccionado}
-          setProductoSeleccionado={setProductoSeleccionado}
-        />}
-      {productoEliminar &&
-        <ModalDelete
-          productoEliminar={productoEliminar}
-          setProductoEliminar={setProductoEliminar}
-          getProducts= {getProducts}
-          getCategories={getCategories}
-        />}
-     
-      <TableSection
-        listaProductos={listaProductos}
-        setIsModalOpen={setIsModalOpen}
-        setListaProductos={setListaProductos}
-        setProductoSeleccionado={setProductoSeleccionado}
-        setProductoEliminar={setProductoEliminar}
-        getProducts = {getProducts}
-        handleOpenModal={handleOpenModal}
-      />
-      <ResumeSection 
-        listaProductos={listaProductos}
-      />
+      {notification && (
+        <div className="notification">
+          {notification}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div>Cargando...</div>
+      ) : errorLoading ? (
+        <ErrorPage />
+      ) : (
+        <>
+          {categoriesList.length > 0 &&
+            <FilterSection
+              categoriesList={categoriesList}
+              setProductsList={setProductsList}
+              setSearchValues={setSearchValues}
+              searchValues={searchValues}
+              getProducts={getProducts}
+            />}
+          {isModalOpen &&
+            <Modal
+              getProducts={getProducts}
+              getCategories={getCategories}
+              setIsModalOpen={setIsModalOpen}
+              categoriesList={categoriesList}
+              selectedProduct={selectedProduct}
+              setSelectedProduct={setSelectedProduct}
+              setNotification={setNotification}
+            />}
+          {deleteProduct &&
+            <ModalDelete
+              deleteProduct={deleteProduct}
+              setDeleteProduct={setDeleteProduct}
+              getProducts={getProducts}
+              getCategories={getCategories}
+              setNotification={setNotification}
+            />}
+
+          <TableSection
+            productsList={productsList}
+            setIsModalOpen={setIsModalOpen}
+            setProductsList={setProductsList}
+            setSelectedProduct={setSelectedProduct}
+            setDeleteProduct={setDeleteProduct}
+            handleOpenModal={handleOpenModal}
+          />
+          <ResumeSection
+            productsList={productsList}
+          />
+        </>
+      )}
     </div>
   );
+
 }
 
 export default App;

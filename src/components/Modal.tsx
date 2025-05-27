@@ -2,30 +2,41 @@ import React, { Dispatch, SetStateAction, useState } from "react";
 import "../Styles/Modal.css"
 import { Producto } from "../types";
 import axios from "axios";
+import URLS, { handleAxiosError } from "../utils";
 
 interface ModalProps {
     setIsModalOpen: Dispatch<SetStateAction<boolean>>;
     getProducts: () => void;
     getCategories: () => void;
-    listaCategorias: string[]
-    productoSeleccionado: Producto | null;
-    setProductoSeleccionado: Dispatch<SetStateAction<Producto | null>>;
+    categoriesList: string[]
+    selectedProduct: Producto | null;
+    setSelectedProduct: Dispatch<SetStateAction<Producto | null>>;
+    setNotification: (msg: string) => void;
 }
 
-const Modal: React.FC<ModalProps> = ({ setIsModalOpen, getProducts, getCategories, listaCategorias, productoSeleccionado, setProductoSeleccionado }) => {
+const Modal: React.FC<ModalProps> = ({
+    setIsModalOpen,
+    getProducts,
+    getCategories,
+    categoriesList,
+    selectedProduct,
+    setSelectedProduct,
+    setNotification
+}) => {
 
     const [errors, setErrors] = useState<string[]>([])
     const [newCategory, setNewCategory] = useState("")
     const [dataForm, setDataForm] = useState<Producto>({
-        name: productoSeleccionado ? productoSeleccionado.name : "",
-        category: productoSeleccionado ? productoSeleccionado.category : "SC",
-        quantityInStock: productoSeleccionado ? productoSeleccionado.quantityInStock : "",
-        unitPrice: productoSeleccionado ? productoSeleccionado.unitPrice : "",
-        expirationDate: productoSeleccionado ? productoSeleccionado.expirationDate : "",
-        creationDate: productoSeleccionado ? productoSeleccionado.creationDate : "",
+        name: selectedProduct ? selectedProduct.name : "",
+        category: selectedProduct ? selectedProduct.category : "SC",
+        quantityInStock: selectedProduct ? selectedProduct.quantityInStock : "",
+        unitPrice: selectedProduct ? selectedProduct.unitPrice : "",
+        expirationDate: selectedProduct ? selectedProduct.expirationDate : "",
+        creationDate: selectedProduct ? selectedProduct.creationDate : "",
         updateDate: ""
     })
 
+    //Method to handles save action. Depending if it is for update or create
     const handleSubmitButton = () => {
         if (validForm()) {
             const finalProduct = {
@@ -38,33 +49,35 @@ const Modal: React.FC<ModalProps> = ({ setIsModalOpen, getProducts, getCategorie
                 updateDate: new Date(),
             }
 
-            const url = productoSeleccionado ?
-                `http://localhost:8080/products/${productoSeleccionado.id}` :
-                "http://localhost:8080/products"
+            const url = selectedProduct ?
+                URLS.putProduct + selectedProduct.id :
+                URLS.postProduct
 
-            const method = productoSeleccionado ? "put" : "post"
+            const method = selectedProduct ? "put" : "post"
 
             axios({ method, url, data: finalProduct })
-                .then(response => {
+                .then(async (response) => {
                     if (response.status === 200) {
-                        alert(`Product ${productoSeleccionado ? "edited" : "created"} correctly`)
-                        getProducts()
-                        getCategories()
-                        setIsModalOpen(false)
-                        setProductoSeleccionado(null)
+                        setNotification(`Product ${selectedProduct ? "edited" : "created"} correctly`);
+                        await getProducts();
+                        await getCategories();
+                        setIsModalOpen(false);
+                        setSelectedProduct(null);
                     }
                 })
                 .catch(error => {
-                    alert("Ha ocurrido un error")
+                    handleAxiosError(error)
                 })
         }
     }
 
     const handleCloseModal = () => {
         setIsModalOpen(false)
-        setProductoSeleccionado(null)
+        setSelectedProduct(null)
     }
 
+
+    //Method to validate form
     const validForm = (): boolean => {
 
         const foundErrors: string[] = []
@@ -74,15 +87,24 @@ const Modal: React.FC<ModalProps> = ({ setIsModalOpen, getProducts, getCategorie
         if (dataForm.category === "NC" && newCategory.length < 3) {
             foundErrors.push("New category should be longer")
         }
-        if (dataForm.name.trim().length < 3) {
-            foundErrors.push("Product name should be longer but shorter than 120")
+        if (dataForm.category === "NC") {
+            const newCategoryLower = newCategory.trim().toLowerCase();
+            const categoryExists = categoriesList.some(
+                (cat) => cat.toLowerCase() === newCategoryLower
+            );
 
+            if (newCategory.length < 3) {
+                foundErrors.push("New category should be longer");
+            } else if (categoryExists) {
+                foundErrors.push("This category already exists");
+            }
         }
+
         if (isNaN(Number(dataForm.unitPrice)) || Number(dataForm.unitPrice) < 0.01) {
             foundErrors.push("Enter a valid number for the price")
 
         }
-        if (isNaN(Number(dataForm.quantityInStock)) || Number(dataForm.quantityInStock) < 1) {
+        if (isNaN(Number(dataForm.quantityInStock))) {
             foundErrors.push("Enter a valid number for stock")
 
         }
@@ -103,19 +125,19 @@ const Modal: React.FC<ModalProps> = ({ setIsModalOpen, getProducts, getCategorie
         <div className="modal-overlay">
             <div className="modal">
 
-                <h2>{productoSeleccionado ? "Edit " : "Create "} product</h2>
+                <h2>{selectedProduct ? "Edit " : "Create "} product</h2>
                 <div className="modal-row">
-                    <label>Name</label>
-                    <input type="text" value={dataForm.name} onChange={(event) => setDataForm(prev => ({ ...prev, name: event.target.value }))}></input>
+                    <label htmlFor="name-input">Product name</label>
+                    <input id="name-input" type="text" value={dataForm.name} onChange={(event) => setDataForm(prev => ({ ...prev, name: event.target.value }))}></input>
                 </div>
                 <div className="modal-row">
 
-                    <label>Category</label>
-                    <select value={dataForm.category} onChange={(event) => setDataForm(prev => ({ ...prev, category: event.target.value }))}>
+                    <label htmlFor="category-select">Category</label>
+                    <select id="category-select" value={dataForm.category} onChange={(event) => setDataForm(prev => ({ ...prev, category: event.target.value }))}>
                         <option value="SC">
                             Select category
                         </option>
-                        {listaCategorias.map((item, index) => (
+                        {categoriesList.map((item, index) => (
                             <option value={item} key={index}>
                                 {item}
                             </option>
@@ -129,26 +151,27 @@ const Modal: React.FC<ModalProps> = ({ setIsModalOpen, getProducts, getCategorie
                 {
                     dataForm.category === "NC" &&
                     <div className="modal-row">
-                        <label>
+                        <label htmlFor="new-category-select">
                             New category
                         </label>
-                        <input type="text" value={newCategory} onChange={(event) => setNewCategory(event.target.value)}></input>
+                        <input id="new-category-select" type="text" value={newCategory} onChange={(event) => setNewCategory(event.target.value)}></input>
                     </div>
                 }
 
                 <div className="modal-row">
-                    <label>Stock</label>
-                    <input type="text" value={dataForm.quantityInStock} onChange={(event) => setDataForm(prev => ({ ...prev, quantityInStock: event.target.value }))}></input>
+                    <label htmlFor="stock-input">Stock</label>
+                    <input id="stock-input" type="text" value={dataForm.quantityInStock} onChange={(event) => setDataForm(prev => ({ ...prev, quantityInStock: event.target.value }))}></input>
                 </div>
                 <div className="modal-row">
-                    <label>Unit price</label>
-                    <input type="text" value={dataForm.unitPrice} onChange={(event) => setDataForm(prev => ({ ...prev, unitPrice: event.target.value }))}></input>
+                    <label htmlFor="price-input">Unit price</label>
+                    <input id="price-input" type="text" value={dataForm.unitPrice} onChange={(event) => setDataForm(prev => ({ ...prev, unitPrice: event.target.value }))}></input>
                 </div>
                 {
                     dataForm.category === "Groceries" &&
                     <div className="modal-row">
-                        <label>Expiration date</label>
+                        <label htmlFor="expiration-input">Expiration date</label>
                         <input
+                            id="expiration-input"
                             type="date"
                             value={dataForm.expirationDate ?? ""}
                             onChange={(event) =>

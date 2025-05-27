@@ -9,9 +9,38 @@
 
 .products-table {
     width: 100%;
-    border-collapse: collapse;
     font-family: sans-serif;
     font-size: 0.95rem;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.col-id {
+    width: 5%;
+}
+
+.col-name {
+    width: 20%;
+}
+
+.col-category {
+    width: 15%;
+}
+
+.col-price {
+    width: 10%;
+}
+
+.col-expiration {
+    width: 15%;
+}
+
+.col-stock {
+    width: 10%;
+}
+
+.col-actions {
+    width: 25%;
 }
 
 .products-table thead {
@@ -85,6 +114,6 @@
     color: #155724;
 }
 
-.centered-cell{
+.centered-cell {
     text-align: center;
 }
